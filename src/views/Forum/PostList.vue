@@ -1,0 +1,292 @@
+<template>
+  <div class="post-list-container">
+    <!-- 顶部操作栏 -->
+    <div class="top-bar">
+      <div class="category-filter">
+        <el-select v-model="selectedCategory" placeholder="选择分类" clearable @change="handleCategoryChange">
+          <el-option
+            v-for="category in categories"
+            :key="category.id"
+            :label="category.name"
+            :value="category.id"
+          />
+        </el-select>
+      </div>
+      
+      <div class="actions">
+        <el-button v-if="userStore.isAuthenticated" type="primary" @click="handleCreatePost">
+          <el-icon><Plus /></el-icon>发表帖子
+        </el-button>
+      </div>
+    </div>
+
+    <!-- 帖子列表 -->
+    <div class="posts-container">
+      <el-empty v-if="!loading && (!posts || posts.length === 0)" description="暂无帖子" />
+      
+      <el-skeleton v-else-if="loading" :rows="5" animated />
+      
+      <div v-else class="post-list">
+        <div v-for="post in posts" :key="post.id" class="post-item" @click="viewPost(post.id)">
+          <div class="post-header">
+            <h3 class="post-title">{{ post.title }}</h3>
+            <el-tag size="small" type="info">{{ getCategoryName(post.categoryId) }}</el-tag>
+          </div>
+          
+          <div class="post-content">{{ post.content }}</div>
+          
+          <div class="post-footer">
+            <div class="post-info">
+              <span class="author">{{ post.author }}</span>
+              <span class="time">{{ formatDate(post.createTime) }}</span>
+            </div>
+            <div class="post-stats">
+              <span class="views">
+                <el-icon><View /></el-icon>
+                {{ post.views }}
+              </span>
+              <span class="comments">
+                <el-icon><ChatLineRound /></el-icon>
+                {{ post.commentCount }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 分页 -->
+    <div class="pagination">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :total="total"
+        :page-sizes="[10, 20, 50]"
+        layout="total, sizes, prev, pager, next"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useUserStore } from '@/store/user'
+import { usePostStore } from '@/store/posts'
+import { ElMessage } from 'element-plus'
+import { Plus, View, ChatLineRound } from '@element-plus/icons-vue'
+import axios from '@/utils/axios'
+
+const router = useRouter()
+const route = useRoute()
+const userStore = useUserStore()
+const postStore = usePostStore()
+
+const loading = ref(false)
+const posts = ref([])
+const total = ref(0)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const categories = ref([])
+const selectedCategory = ref(null)
+
+// 分类路径映射
+const categoryPathMap = {
+  'tech': 1,
+  'disease': 2,
+  'market': 3,
+  'experience': 4,
+  'policy': 5,
+  'tools': 6
+}
+
+// 获取分类列表
+const fetchCategories = async () => {
+  try {
+    const response = await axios.get('/categories')
+    categories.value = response.data
+  } catch (error) {
+    console.error('获取分类列表失败:', error)
+    ElMessage.error('获取分类列表失败')
+  }
+}
+
+// 获取分类名称
+const getCategoryName = (categoryId) => {
+  const category = categories.value.find(c => c.id === categoryId)
+  return category ? category.name : '未分类'
+}
+
+// 加载帖子列表
+const loadPosts = async () => {
+  loading.value = true
+  try {
+    console.log('Loading posts with params:', {
+      page: currentPage.value - 1,
+      size: pageSize.value,
+      categoryId: selectedCategory.value
+    })
+    
+    await postStore.fetchPosts(currentPage.value, pageSize.value, selectedCategory.value)
+    posts.value = postStore.getPosts
+    total.value = postStore.total
+    
+    console.log('Loaded posts:', posts.value)
+    console.log('Total posts:', total.value)
+  } catch (error) {
+    console.error('加载帖子失败:', error)
+    ElMessage.error('加载帖子失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 监听路由变化
+watch(() => route.path, (newPath) => {
+  const pathSegments = newPath.split('/')
+  if (pathSegments[1] === 'forum' && pathSegments[2]) {
+    const categoryId = categoryPathMap[pathSegments[2]]
+    if (categoryId) {
+      selectedCategory.value = categoryId
+    } else {
+      selectedCategory.value = null
+    }
+  } else {
+    selectedCategory.value = null
+  }
+  currentPage.value = 1
+  loadPosts()
+}, { immediate: true })
+
+// 格式化日期
+const formatDate = (date) => {
+  if (!date) return ''
+  return new Date(date).toLocaleString()
+}
+
+// 查看帖子详情
+const viewPost = (id) => {
+  router.push(`/forum/post/${id}`)
+}
+
+// 创建新帖子
+const handleCreatePost = () => {
+  router.push('/forum/create')
+}
+
+// 处理分页大小变化
+const handleSizeChange = (val) => {
+  pageSize.value = val
+  loadPosts()
+}
+
+// 处理页码变化
+const handleCurrentChange = (val) => {
+  currentPage.value = val
+  loadPosts()
+}
+
+// 处理分类变化
+const handleCategoryChange = () => {
+  currentPage.value = 1
+  loadPosts()
+}
+
+// 组件挂载时加载数据
+onMounted(async () => {
+  await fetchCategories()
+  await loadPosts()
+})
+</script>
+
+<style scoped>
+.post-list-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.posts-container {
+  margin-bottom: 20px;
+}
+
+.post-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.post-item {
+  padding: 16px;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.post-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.post-title {
+  margin: 0;
+  font-size: 18px;
+  color: #303133;
+}
+
+.post-content {
+  color: #606266;
+  margin-bottom: 12px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.post-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: #909399;
+}
+
+.post-info {
+  display: flex;
+  gap: 12px;
+}
+
+.post-stats {
+  display: flex;
+  gap: 16px;
+}
+
+.views, .comments {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+</style> 

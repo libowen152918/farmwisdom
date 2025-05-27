@@ -1,0 +1,112 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  mvc:
+    servlet:
+      path: /
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/farmwisdom?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 1234
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 15
+      idle-timeout: 30000
+      pool-name: HikariCP
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      connection-test-query: SELECT 1
+
+  # 邮件配置
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username: your-email@qq.com
+    password: your-smtp-password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
+  # Flyway 配置
+  flyway:
+    enabled: true
+    clean-disabled: false
+    clean-on-validation-error: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    encoding: UTF-8
+    out-of-order: false
+    placeholder-replacement: false
+
+  # 文件上传配置
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# MyBatis-Plus配置
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    call-setters-on-nulls: true
+    jdbc-type-for-null: null
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    default-enum-type-handler: org.apache.ibatis.type.EnumOrdinalTypeHandler
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+    banner: false
+    enable-sql-runner: true
+
+app:
+  # JWT配置
+  jwt:
+    secret: 9a4f2c8d3b7e1a5f2c8d3b7e1a5f2c8d3b7e1a5f2c8d3b7e1a5f2c8d3b7e1a5f2c8d3b7e1a5f2c8d3b7e1a5f2c8d3b7e1a5f2c8d3b7e1a5f2c8d3b7e1a5f2c8d3b7e1a5f2c8d3b7e1a5f2c8d3b7e1a5f2c8d3b7e1a5f2c8d3b7e1a5f
+    expiration: 86400000 # 24 hours in milliseconds
+
+  # 文件存储配置
+  file:
+    upload-dir: ./uploads
+    allowed-file-types: jpg,jpeg,png,gif
+    max-file-size: 5242880 # 5MB in bytes
+    base-url: http://localhost:8080/api/files
+
+  # 邮件配置
+  mail:
+    from: your-email@qq.com
+    base-url: http://localhost:8080
+    token-expiration-ms: 86400000 # 24 hours
+    support-email: support@farmwisdom.com
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.farmwisdom: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.validation: TRACE
+    org.hibernate.validator: TRACE
+
+jpa:
+  show-sql: true
+  hibernate:
+    ddl-auto: update
+  properties:
+    hibernate:
+      dialect: org.hibernate.dialect.MySQL8Dialect

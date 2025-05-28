@@ -9,6 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/posts")
@@ -67,6 +68,24 @@ public class PostController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> unlikePost(@PathVariable Long id) {
         postService.unlikePost(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/{id}/top")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> togglePostTop(
+            @PathVariable Long id,
+            @RequestBody Map<String, Boolean> request) {
+        postService.updatePostTop(id, request.get("isTop"));
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/{id}/essence")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> togglePostEssence(
+            @PathVariable Long id,
+            @RequestBody Map<String, Boolean> request) {
+        postService.updatePostEssence(id, request.get("isEssence"));
         return ResponseEntity.ok().build();
     }
 

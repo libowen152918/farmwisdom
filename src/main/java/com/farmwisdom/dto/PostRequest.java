@@ -17,4 +17,8 @@ public class PostRequest {
 
     @NotNull(message = "分类ID不能为空")
     private Long categoryId;
+
+    private Boolean isTop = false;
+
+    private Boolean isEssence = false;
 }

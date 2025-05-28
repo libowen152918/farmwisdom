@@ -29,9 +29,21 @@
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="title" label="标题" min-width="200">
         <template #default="{ row }">
-          <router-link :to="'/forum/post/' + row.id" class="post-link">
-            {{ row.title }}
-          </router-link>
+          <div class="title-wrapper">
+            <router-link :to="'/forum/post/' + row.id" class="post-link">
+              {{ row.title }}
+            </router-link>
+            <el-tag 
+              v-if="row.isTop" 
+              class="top-tag" 
+              type="danger" 
+              effect="dark" 
+              size="small"
+            >
+              <el-icon class="top-icon"><Top /></el-icon>
+              置顶
+            </el-tag>
+          </div>
         </template>
       </el-table-column>
       <el-table-column prop="author" label="作者" width="120" />
@@ -52,8 +64,36 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right">
+      <el-table-column label="操作" width="400" fixed="right">
         <template #default="{ row }">
+          <el-tooltip
+            :content="row.isTop ? '当前已置顶，点击取消置顶' : '点击置顶该帖子'"
+            placement="top"
+          >
+            <el-button
+              size="small"
+              :type="row.isTop ? 'warning' : 'info'"
+              :icon="row.isTop ? 'ArrowDown' : 'ArrowUp'"
+              @click="togglePostTop(row)"
+            >
+              {{ row.isTop ? '取消置顶' : '置顶' }}
+            </el-button>
+          </el-tooltip>
+
+          <el-tooltip
+            :content="row.isEssence ? '当前已设为精品，点击取消精品' : '点击设为精品'"
+            placement="top"
+          >
+            <el-button
+              size="small"
+              :type="row.isEssence ? 'warning' : 'info'"
+              :icon="row.isEssence ? 'RemoveFilled' : 'Star'"
+              @click="togglePostEssence(row)"
+            >
+              {{ row.isEssence ? '取消精品' : '精品' }}
+            </el-button>
+          </el-tooltip>
+
           <el-button
             size="small"
             :type="row.status === 'active' ? 'danger' : 'success'"
@@ -90,6 +130,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { ArrowUp, ArrowDown, Star, RemoveFilled, Top } from '@element-plus/icons-vue'
 import axios from '@/utils/axios'
 
 const route = useRoute()
@@ -209,6 +250,68 @@ const getCategoryName = (categoryId) => {
   return category ? category.name : '未分类'
 }
 
+// 处理置顶状态切换
+const togglePostTop = async (post) => {
+  try {
+    const confirmMessage = post.isTop ? '确定要取消置顶该帖子吗？' : '确定要置顶该帖子吗？'
+    await ElMessageBox.confirm(confirmMessage, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: post.isTop ? 'warning' : 'info'
+    })
+
+    await axios.put(`/posts/${post.id}`, {
+      title: post.title,
+      content: post.content,
+      categoryId: post.categoryId,
+      isTop: !post.isTop,
+      isEssence: post.isEssence
+    })
+    
+    // 更新帖子列表
+    await fetchPosts()
+    
+    // 显示操作成功提示，并指出具体帖子标题
+    ElMessage({
+      type: 'success',
+      message: `帖子《${post.title}》${post.isTop ? '已取消置顶' : '已设置为置顶'}`,
+      duration: 3000
+    })
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('操作失败')
+      console.error('Error updating post top status:', error)
+    }
+  }
+}
+
+// 处理精品状态切换
+const togglePostEssence = async (post) => {
+  try {
+    const confirmMessage = post.isEssence ? '确定要取消精品标记吗？' : '确定要将该帖子设为精品吗？'
+    await ElMessageBox.confirm(confirmMessage, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: post.isEssence ? 'warning' : 'info'
+    })
+
+    await axios.put(`/posts/${post.id}`, {
+      title: post.title,
+      content: post.content,
+      categoryId: post.categoryId,
+      isTop: post.isTop,
+      isEssence: !post.isEssence
+    })
+    await fetchPosts()
+    ElMessage.success(post.isEssence ? '取消精品成功' : '设置精品成功')
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('操作失败')
+      console.error('Error updating post essence status:', error)
+    }
+  }
+}
+
 // 监听路由变化
 watch(() => route.query.category, (newCategory) => {
   if (newCategory) {
@@ -251,9 +354,20 @@ onMounted(async () => {
   width: 200px;
 }
 
+/* 修正分类选择框叉号的hover样式 */
+:deep(.category-select .el-select .el-tag .el-tag__close.el-icon) {
+  transition: color 0.2s;
+}
+
+:deep(.category-select .el-select .el-tag .el-tag__close.el-icon:hover) {
+  background-color: transparent !important;
+  color: #f56c6c !important;
+}
+
 .post-link {
   color: #1a472a;
   text-decoration: none;
+  margin-right: 8px;
 }
 
 .post-link:hover {
@@ -277,5 +391,55 @@ onMounted(async () => {
 
 :deep(.el-button) {
   margin-right: 8px;
+}
+
+.title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.top-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 6px;
+  height: 20px;
+  line-height: 20px;
+  font-size: 12px;
+  border-radius: 2px;
+  white-space: nowrap;
+  background-color: #f56c6c;
+  border-color: #f56c6c;
+}
+
+.top-icon {
+  margin-right: 2px;
+  font-size: 12px;
+}
+
+/* 确保标签在表格中正确显示 */
+:deep(.el-table .cell) {
+  display: flex;
+  align-items: center;
+}
+
+:deep(.el-table .title-wrapper) {
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+/* 置顶按钮激活状态样式 */
+:deep(.el-button.el-button--warning) {
+  background-color: #e6a23c;
+  border-color: #e6a23c;
+  color: white;
+}
+
+:deep(.el-button.el-button--warning:hover) {
+  background-color: #ebb563;
+  border-color: #ebb563;
+  color: white;
 }
 </style> 

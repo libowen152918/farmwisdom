@@ -132,6 +132,16 @@ public class PostServiceImpl implements PostService {
         post.setContent(postRequest.getContent());
         post.setCategoryId(postRequest.getCategoryId());
 
+        // 只有管理员可以设置置顶和精品状态
+        if (SecurityUtils.isCurrentUserAdmin()) {
+            if (postRequest.getIsTop() != null) {
+                post.setIsTop(postRequest.getIsTop());
+            }
+            if (postRequest.getIsEssence() != null) {
+                post.setIsEssence(postRequest.getIsEssence());
+            }
+        }
+
         postMapper.updateById(post);
         return convertToPostResponse(post);
     }

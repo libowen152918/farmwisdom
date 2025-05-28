@@ -45,9 +45,17 @@
       
       <div v-else class="post-list">
         <div v-for="post in posts" :key="post.id" class="post-item" @click="viewPost(post.id)">
+          <!-- 精品标识 -->
+          <div v-if="post.isEssence" class="essence-badge">
+            <el-icon color="#fff"><Star /></el-icon>
+          </div>
+          
           <div class="post-header">
             <h3 class="post-title">{{ post.title }}</h3>
-            <el-tag size="small" type="info">{{ getCategoryName(post.categoryId) }}</el-tag>
+            <div class="post-tags">
+              <el-tag v-if="post.isTop" type="danger" effect="dark" size="small">置顶</el-tag>
+              <el-tag size="small" type="info">{{ getCategoryName(post.categoryId) }}</el-tag>
+            </div>
           </div>
           
           <div class="post-content">{{ post.content }}</div>
@@ -93,7 +101,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { usePostStore } from '@/store/posts'
 import { ElMessage } from 'element-plus'
-import { Plus, View, ChatLineRound, Search } from '@element-plus/icons-vue'
+import { Plus, View, ChatLineRound, Search, Star } from '@element-plus/icons-vue'
 import axios from '@/utils/axios'
 
 const router = useRouter()
@@ -310,11 +318,32 @@ onMounted(async () => {
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .post-item:hover {
   transform: translateY(-2px);
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.essence-badge {
+  position: absolute;
+  top: -20px;
+  left: -20px;
+  width: 40px;
+  height: 40px;
+  background-color: #E6A23C;
+  transform: rotate(45deg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.essence-badge .el-icon {
+  transform: rotate(-45deg);
+  margin-top: 25px;
+  margin-left: 5px;
 }
 
 .post-header {
@@ -361,6 +390,12 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.post-tags {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .pagination {

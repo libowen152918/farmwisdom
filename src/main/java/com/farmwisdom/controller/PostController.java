@@ -25,8 +25,9 @@ public class PostController {
     public ResponseEntity<Page<PostResponse>> getPosts(
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size,
-            @RequestParam(required = false) Long categoryId) {
-        return ResponseEntity.ok(postService.getPosts(page, size, categoryId));
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String search) {
+        return ResponseEntity.ok(postService.getAdminPosts(page, size, search, categoryId));
     }
 
     @GetMapping("/{id}")

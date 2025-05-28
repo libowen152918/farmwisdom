@@ -13,6 +13,23 @@
         </el-select>
       </div>
       
+      <!-- 添加搜索框 -->
+      <div class="search-bar">
+        <el-input
+          v-model="searchQuery"
+          placeholder="搜索帖子标题"
+          prefix-icon="Search"
+          clearable
+          @keyup.enter="handleSearch"
+        >
+          <template #append>
+            <el-button @click="handleSearch">
+              <el-icon><Search /></el-icon>
+            </el-button>
+          </template>
+        </el-input>
+      </div>
+
       <div class="actions">
         <el-button v-if="userStore.isAuthenticated" type="primary" @click="handleCreatePost">
           <el-icon><Plus /></el-icon>发表帖子
@@ -71,12 +88,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { usePostStore } from '@/store/posts'
 import { ElMessage } from 'element-plus'
-import { Plus, View, ChatLineRound } from '@element-plus/icons-vue'
+import { Plus, View, ChatLineRound, Search } from '@element-plus/icons-vue'
 import axios from '@/utils/axios'
 
 const router = useRouter()
@@ -86,11 +103,13 @@ const postStore = usePostStore()
 
 const loading = ref(false)
 const posts = ref([])
+const allPosts = ref([]) // 存储所有帖子
 const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const categories = ref([])
 const selectedCategory = ref(null)
+const searchQuery = ref('')
 
 // 分类路径映射
 const categoryPathMap = {
@@ -123,21 +142,37 @@ const getCategoryName = (categoryId) => {
 const loadPosts = async () => {
   loading.value = true
   try {
-    console.log('Loading posts with params:', {
-      page: currentPage.value - 1,
-      size: pageSize.value,
-      categoryId: selectedCategory.value
+    const response = await axios.get('/posts', {
+      params: {
+        page: currentPage.value,
+        size: pageSize.value,
+        categoryId: selectedCategory.value
+      }
     })
-    
-    await postStore.fetchPosts(currentPage.value, pageSize.value, selectedCategory.value)
-    posts.value = postStore.getPosts
-    total.value = postStore.total
-    
-    console.log('Loaded posts:', posts.value)
-    console.log('Total posts:', total.value)
+    if (response?.data?.records) {
+      allPosts.value = response.data.records
+      // 如果有搜索关键词，过滤帖子
+      if (searchQuery.value?.trim()) {
+        const filteredPosts = allPosts.value.filter(post => 
+          post.title.toLowerCase().includes(searchQuery.value.trim().toLowerCase())
+        )
+        posts.value = filteredPosts
+        total.value = filteredPosts.length
+      } else {
+        posts.value = allPosts.value
+        total.value = response.data.total
+      }
+    } else {
+      posts.value = []
+      allPosts.value = []
+      total.value = 0
+    }
   } catch (error) {
-    console.error('加载帖子失败:', error)
-    ElMessage.error('加载帖子失败')
+    console.error('获取帖子列表失败:', error)
+    ElMessage.error('获取帖子列表失败')
+    posts.value = []
+    allPosts.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
@@ -179,19 +214,57 @@ const handleCreatePost = () => {
 // 处理分页大小变化
 const handleSizeChange = (val) => {
   pageSize.value = val
-  loadPosts()
+  if (searchQuery.value?.trim()) {
+    // 如果有搜索关键词，手动处理分页
+    const start = (currentPage.value - 1) * val
+    const end = start + val
+    const filteredPosts = allPosts.value.filter(post => 
+      post.title.toLowerCase().includes(searchQuery.value.trim().toLowerCase())
+    )
+    posts.value = filteredPosts.slice(start, end)
+  } else {
+    loadPosts()
+  }
 }
 
 // 处理页码变化
 const handleCurrentChange = (val) => {
   currentPage.value = val
-  loadPosts()
+  if (searchQuery.value?.trim()) {
+    // 如果有搜索关键词，手动处理分页
+    const start = (val - 1) * pageSize.value
+    const end = start + pageSize.value
+    const filteredPosts = allPosts.value.filter(post => 
+      post.title.toLowerCase().includes(searchQuery.value.trim().toLowerCase())
+    )
+    posts.value = filteredPosts.slice(start, end)
+  } else {
+    loadPosts()
+  }
 }
 
 // 处理分类变化
 const handleCategoryChange = () => {
   currentPage.value = 1
+  searchQuery.value = '' // 清空搜索框
   loadPosts()
+}
+
+// 处理搜索
+const handleSearch = () => {
+  if (searchQuery.value?.trim()) {
+    // 在现有数据中搜索
+    const filteredPosts = allPosts.value.filter(post => 
+      post.title.toLowerCase().includes(searchQuery.value.trim().toLowerCase())
+    )
+    posts.value = filteredPosts
+    total.value = filteredPosts.length
+    currentPage.value = 1
+  } else {
+    // 如果搜索框为空，显示所有帖子
+    posts.value = allPosts.value
+    total.value = allPosts.value.length
+  }
 }
 
 // 组件挂载时加载数据
@@ -213,6 +286,12 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  gap: 16px;
+}
+
+.search-bar {
+  flex: 1;
+  max-width: 400px;
 }
 
 .posts-container {

@@ -15,6 +15,10 @@
             <el-icon><DataLine /></el-icon>
             <span>仪表盘</span>
           </el-menu-item>
+          <el-menu-item index="/admin/posts">
+            <el-icon><Document /></el-icon>
+            <span>帖子管理</span>
+          </el-menu-item>
           <el-menu-item index="/admin/users">
             <el-icon><User /></el-icon>
             <span>用户管理</span>
@@ -63,8 +67,7 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/userStore'
-import { DataLine, User, Crop, Sunny, ArrowDown } from '@element-plus/icons-vue'
-
+import { DataLine, User, Crop, Sunny, ArrowDown, Document } from '@element-plus/icons-vue'
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
